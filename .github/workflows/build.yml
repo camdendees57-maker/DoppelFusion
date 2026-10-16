@@ -18,7 +18,7 @@ jobs:
       shell: pwsh
       run: |
         New-Item -ItemType Directory -Force -Path refs | Out-Null
-        # MelonLoader + Harmony + Interop (from official release)
+        # MelonLoader + Harmony + Interop
         Invoke-WebRequest -Uri "https://github.com/LavaGang/MelonLoader/releases/download/v0.6.6/MelonLoader.x64.zip" -OutFile ml.zip
         Expand-Archive ml.zip -DestinationPath ml -Force
         Copy-Item ml/MelonLoader/net6/MelonLoader.dll refs/
@@ -28,19 +28,21 @@ jobs:
         # BoneLib from Thunderstore
         Invoke-WebRequest -Uri "https://thunderstore.io/package/download/bonelib/BoneLib/3.2.2/" -OutFile bonelib.zip
         Expand-Archive bonelib.zip -DestinationPath bl -Force
-        Copy-Item bl/Mods/BoneLib.dll refs/ -ErrorAction SilentlyContinue
-        if (!(Test-Path refs/BoneLib.dll)) { Copy-Item bl/BoneLib.dll refs/ -ErrorAction SilentlyContinue }
-        # LabFusion from GitHub releases (latest)
-        Invoke-WebRequest -Uri "https://github.com/Lakatrazz/BONELAB-Fusion/releases/latest/download/LabFusion.dll" -OutFile refs/LabFusion.dll -ErrorAction SilentlyContinue
-        # Game assemblies via NuGet stripped package (Bonelab.GameLibs.Steam)
+        Get-ChildItem -Path bl -Recurse -Filter BoneLib.dll | Select-Object -First 1 | Copy-Item -Destination refs/
+        # LabFusion
+        Invoke-WebRequest -Uri "https://github.com/Lakatrazz/BONELAB-Fusion/releases/latest/download/LabFusion.dll" -OutFile refs/LabFusion.dll
+        # Game assemblies via NuGet
         dotnet add package Bonelab.GameLibs.Steam --version 6.0.0 --package-directory pkgs
-        if (Test-Path pkgs/bonelab.gamelibs.steam/6.0.0/lib/net6.0/Assembly-CSharp.dll) {
-          Copy-Item pkgs/bonelab.gamelibs.steam/6.0.0/lib/net6.0/*.dll refs/
-        }
+        $pkgPath = Get-ChildItem -Path pkgs -Recurse -Filter Assembly-CSharp.dll | Select-Object -First 1
+        if ($pkgPath) { Copy-Item $pkgPath.Directory/*.dll refs/ }
     - name: Restore and Build
       run: dotnet build DoppelFusion.csproj -c Release
+    - name: List output
+      run: dir bin /s /b
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: DoppelFusion
-        path: bin/Release/net6.0/DoppelFusion.dll
+        path: |
+          bin/Release/*.dll
+          bin/Release/net6.0/*.dll
