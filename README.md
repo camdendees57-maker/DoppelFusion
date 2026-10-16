@@ -3,20 +3,12 @@
 BoneLab bot mod (Doppel) with Fusion multiplayer visibility and smarter AI.
 
 ## Setup
-1. Install MelonLoader on BONELAB.
-2. Run the game once so Il2CppAssemblies generate.
-3. Drop these DLLs into the `refs/` folder (or set BONELAB_DIR env):
-   - From `BONELAB/MelonLoader/Il2CppAssemblies/`: Assembly-CSharp.dll, Il2CppSLZ.Marrow.dll, Il2CppSLZ.Bonelab.dll, etc.
-   - BoneLib.dll from https://thunderstore.io/c/bonelab/p/bonelib/BoneLib/
-   - LabFusion.dll (you said you'll drop this)
-   - MelonLoader.dll, 0Harmony.dll, Il2CppInterop.* from MelonLoader/net6/
-4. Open in VS, restore, build.
-5. Drop the output DLL into BONELAB/Mods/.
+1. Clone this repo.
+2. Put the DLLs from your uploaded source.zip into the `refs/` folder (LabFusion.dll, BoneLib.dll, Assembly-CSharp.dll, Il2CppSLZ.Marrow.dll, MelonLoader.dll, 0Harmony.dll, Il2CppInterop.Runtime.dll, etc.).
+3. Open DoppelFusion.csproj in Visual Studio or build with `dotnet build`.
+4. Drop the output DLL into your BONELAB/Mods/ folder.
+5. Make sure Fusion is installed and running for the bots to sync to other players.
 
-## DLL Sources
-- BoneLib: https://thunderstore.io/c/bonelab/p/bonelib/BoneLib/
-- LabFusion: https://github.com/Lakatrazz/BONELAB-Fusion/releases
-- Game assemblies: generated in your game install after MelonLoader run, or use stripped ones from NuGet Bonelab.GameLibs.Steam
-- MelonLoader: https://github.com/LavaGang/MelonLoader/releases
+The Fusion module broadcasts bot head/hand poses and state so anyone in the lobby can see the bots. AI constants are tightened for faster reactions, earlier engages, and longer cover.
 
-Bots broadcast poses/states over Fusion Module messages so other players see them. AI reacts faster, engages earlier, covers longer.
+Original Doppel logic goes in the Bot class; call FusionBotSync.BroadcastPose / BroadcastState from Update and mode changes.
