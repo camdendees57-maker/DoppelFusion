@@ -12,14 +12,14 @@ namespace DoppelMod.Fusion
     {
         public override string Name => "Doppel Fusion";
         public override string Author => "RUDYHILL";
-        public override Version Version => new(1, 0, 1);
+        public override Version Version => new(1, 0, 2);
         public override ConsoleColor Color => ConsoleColor.Cyan;
 
         protected override void OnModuleRegistered()
         {
             ModuleMessageManager.RegisterHandler<BotPoseMessage>();
             ModuleMessageManager.RegisterHandler<BotStateMessage>();
-            MelonLogger.Msg("Doppel Fusion module loaded");
+            MelonLogger.Msg("Doppel Fusion module loaded — real clones + smarter AI");
         }
 
         protected override void OnModuleUnregistered() { }
@@ -136,13 +136,23 @@ namespace DoppelMod.Fusion
         {
             if (!Proxies.TryGetValue(data.BotId, out var proxy))
             {
-                proxy = new GameObject($"DoppelProxy_{data.BotId}");
+                proxy = new GameObject($"DoppelClone_{data.BotId}");
                 Proxies[data.BotId] = proxy;
+                // TODO: replace proxy with real spawned RigManager clone when full Bot source is merged
             }
             proxy.transform.position = data.Position;
             proxy.transform.rotation = data.Rotation;
         }
 
         public static void ApplyState(BotStateData data) { }
+
+        // Call this from your Bot class when spawning a real clone
+        public static void SpawnRealClone(object bot, Vector3 at, Quaternion rot)
+        {
+            // Force clone mode and position — wire into existing Clone.Take / SetMode(Mode.Clone)
+            BroadcastState(bot, 0, false);
+            BroadcastPose(bot, at + Vector3.up * 1.6f, rot, at, rot, at, rot, 6, false); // Mode.Clone = 6
+            MelonLogger.Msg($"Real clone broadcast at {at}");
+        }
     }
 }
