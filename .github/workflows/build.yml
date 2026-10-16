@@ -34,7 +34,9 @@ jobs:
         # Game assemblies via NuGet
         dotnet add package Bonelab.GameLibs.Steam --version 6.0.0 --package-directory pkgs
         $pkgPath = Get-ChildItem -Path pkgs -Recurse -Filter Assembly-CSharp.dll | Select-Object -First 1
-        if ($pkgPath) { Copy-Item $pkgPath.Directory/*.dll refs/ }
+        if ($pkgPath) {
+          Get-ChildItem -Path $pkgPath.Directory -Filter *.dll | Copy-Item -Destination refs/
+        }
     - name: Restore and Build
       run: dotnet build DoppelFusion.csproj -c Release
     - name: List output
