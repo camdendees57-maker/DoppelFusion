@@ -1,0 +1,7 @@
+Drop these into this folder:
+- LabFusion.dll (you have it)
+- BoneLib.dll from https://thunderstore.io/c/bonelab/p/bonelib/BoneLib/
+- MelonLoader.dll, 0Harmony.dll, Il2CppInterop.Runtime.dll from your MelonLoader/net6/
+- Assembly-CSharp.dll, Il2CppSLZ.Marrow.dll, Il2CppSLZ.Bonelab.dll etc from MelonLoader/Il2CppAssemblies/ after first run
+
+Or set environment variable BONELAB_DIR to your game root and update csproj HintPaths to $(BONELAB_DIR)\... 
