@@ -1,6 +1,6 @@
 # Null Rat Rose (BONELAB Quest)
 
-A BONELAB code mod for standalone Meta Quest. A TikTok LIVE Rose causes five vanilla Null Rats to spawn; each rat receives a separately randomized material tint when its materials permit recoloring.
+A BONELAB code mod for standalone Meta Quest. TikTok LIVE events can trigger batches of five vanilla Null Rats, each with a separately randomized material tint when its materials permit recoloring. BoneMenu toggles let you choose which event types trigger spawns.
 
 ## Architecture
 
@@ -13,6 +13,21 @@ The TikTok bridge is intentionally separate because the headset does not need to
 ## Important compatibility note
 
 This is an initial Quest-targeted implementation. It uses BoneLib's `HelperMethods.SpawnCrate` and BoneLib's vanilla Null Rat barcode. GitHub Actions can compile the managed DLL, but that does not prove spawning or tinting works in every BONELAB/LemonLoader version. If a test button logs a spawn failure, share the relevant MelonLoader log so the runtime issue can be diagnosed.
+
+## BoneMenu event controls
+
+Open **BoneMenu → Null Rat Rose** after loading into a level.
+
+- **Trigger: Rose Gifts** — enabled by default; every Rose sends five rats (up to ten Roses per event).
+- **Trigger: Likes** — disabled by default; when enabled, each configured like threshold requests a five-rat batch.
+- **Likes per 5 Rats** — choose a threshold from 10 to 1,000 likes in increments of 10. TikTok may group many taps into one LikeEvent.
+- **Trigger: Follows** — requests five rats for each follow event.
+- **Trigger: Shares** — requests five rats for each share event.
+- **Trigger: Viewer Joins** — requests five rats for each join event. This is disabled by default because joining can happen frequently.
+- **TEST: Simulate Rose / Like Burst / Follow / Share / Viewer Join** — test the corresponding trigger without connecting the TikTok listener; make sure the trigger is enabled first.
+- **TEST: Spawn 1 / Spawn 5 Null Rats** — directly test the spawn API, independently of event toggles.
+
+Like-triggered batches are rate-limited to two batches per game frame and capped at 50 queued batches to reduce the chance of freezing standalone Quest.
 
 ## Build
 
@@ -48,10 +63,10 @@ The Quest must be reachable from the PC on TCP port `28991`. If the PC cannot co
 
 ## Behavior and safety caps
 
-- One Rose: 5 Null Rats.
-- A single incoming event is capped at 10 Roses (at most 50 rats from that message).
-- Gifts other than Rose are ignored.
-- Each Rose batch is queued from the network thread, then spawned on the game thread.
+- One enabled event batch: 5 Null Rats.
+- Rose gift quantities are capped at 10 per event (at most 50 rats from that message).
+- Likes accumulate until the configured threshold; follows, shares, and viewer joins are separate event types.
+- Event messages are queued from the network thread, then spawned on the game thread.
 - Random color is applied to child renderers' material colors when supported.
 
 This build is a starting point for live headset testing, not a claim that every Quest version has already been tested in-game.
