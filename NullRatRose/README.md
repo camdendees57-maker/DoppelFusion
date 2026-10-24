@@ -19,8 +19,8 @@ This is an initial Quest-targeted implementation. It uses BoneLib's `HelperMetho
 Open **BoneMenu → Null Rat Rose** after loading into a level.
 
 - **Trigger: Rose Gifts** — enabled by default; every Rose sends five rats (up to ten Roses per event).
-- **Trigger: Likes** — disabled by default; when enabled, each configured like threshold requests a five-rat batch.
-- **Likes per 5 Rats** — choose a threshold from 10 to 1,000 likes in increments of 10. TikTok may group many taps into one LikeEvent.
+- **Trigger: Likes** — enabled by default; each TikTok like event can trigger a five-rat batch.
+- **Likes per 5 Rats** — defaults to 1, so the first like event can spawn five rats. Increase this from 1 to 1,000 if you want to require more likes per batch. TikTok may group multiple taps into one LikeEvent.
 - **Trigger: Follows** — requests five rats for each follow event.
 - **Trigger: Shares** — requests five rats for each share event.
 - **Trigger: Viewer Joins** — requests five rats for each join event. This is disabled by default because joining can happen frequently.
@@ -65,7 +65,7 @@ The Quest must be reachable from the PC on TCP port `28991`. If the PC cannot co
 
 - One enabled event batch: 5 Null Rats.
 - Rose gift quantities are capped at 10 per event (at most 50 rats from that message).
-- Likes accumulate until the configured threshold; follows, shares, and viewer joins are separate event types.
+- Likes accumulate until the configured threshold (default 1); follows, shares, and viewer joins are separate event types. The Quest MelonLoader log records the first five received LIKE events and logs whenever they queue rat batches.
 - Event messages are queued from the network thread, then spawned on the game thread.
 - Random color is applied to child renderers' material colors when supported.
 
