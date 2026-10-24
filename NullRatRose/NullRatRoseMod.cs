@@ -3,12 +3,12 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using MelonLoader;
 using UnityEngine;
-using BoneLib;
 using BoneLib.BoneMenu;
 
 [assembly: MelonInfo(typeof(NullRatRose.NullRatRoseMod), "Null Rat Rose", "0.1.0", "TagtusVR")]
@@ -194,17 +194,47 @@ namespace NullRatRose
                 offset.y = UnityEngine.Random.Range(-0.4f, 1.0f);
                 Vector3 position = origin + offset;
 
-                // BoneLib's supported helper wraps Marrow's AssetSpawner API and is Quest-compatible.
-                HelperMethods.SpawnCrate(
+                // Resolve BoneLib's public SpawnCrate(string, Vector3, Quaternion, Vector3, bool,
+                // Action<GameObject>, Action<GameObject>) overload at runtime so CI doesn't need
+                // proprietary Il2CppSLZ.Marrow game assemblies.
+                Type helperType = AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(assembly => assembly.GetType("BoneLib.HelperMethods", false))
+                    .FirstOrDefault(type => type != null);
+
+                if (helperType == null)
+                    throw new InvalidOperationException("BoneLib.HelperMethods was not found. Install BoneLib v3.2.2.");
+
+                MethodInfo spawnCrate = helperType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .FirstOrDefault(method =>
+                    {
+                        if (method.Name != "SpawnCrate")
+                            return false;
+                        ParameterInfo[] parameters = method.GetParameters();
+                        return parameters.Length == 7 &&
+                               parameters[0].ParameterType == typeof(string) &&
+                               parameters[1].ParameterType == typeof(Vector3) &&
+                               parameters[2].ParameterType == typeof(Quaternion) &&
+                               parameters[3].ParameterType == typeof(Vector3) &&
+                               parameters[4].ParameterType == typeof(bool) &&
+                               parameters[5].ParameterType == typeof(Action<GameObject>) &&
+                               parameters[6].ParameterType == typeof(Action<GameObject>);
+                    });
+
+                if (spawnCrate == null)
+                    throw new MissingMethodException("BoneLib SpawnCrate(string, Vector3, Quaternion, Vector3, bool, Action<GameObject>, Action<GameObject>) was not found.");
+
+                spawnCrate.Invoke(null, new object[]
+                {
                     NullRatBarcode,
                     position,
                     Quaternion.identity,
                     Vector3.one,
                     false,
-                    ApplyRandomColor,
-                    null);
+                    new Action<GameObject>(ApplyRandomColor),
+                    null
+                });
 
-                MelonLogger.Msg("[Null Rat Rose] Null Rat spawn requested at " + position + ". Barcode: " + NullRatBarcode);
+                MelonLogger.Msg("[Null Rat Rose] Null Rat spawn request submitted at " + position + ". Barcode: " + NullRatBarcode);
             }
             catch (Exception ex)
             {
