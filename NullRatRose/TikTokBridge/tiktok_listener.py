@@ -31,7 +31,7 @@ client = TikTokLiveClient(unique_id=USERNAME)
 def send_event(event_type: str, quantity: int = 1) -> None:
     """Send one authenticated TikTok event to the Quest mod over the local network."""
     quantity = max(1, min(int(quantity), MAX_BRIDGE_QUANTITY))
-    message = f"EVENT|{SECRET}|{event_type}|{quantity}\\n".encode("utf-8")
+    message = f"EVENT|{SECRET}|{event_type}|{quantity}\n".encode("utf-8")
     with socket.create_connection((QUEST_IP, PORT), timeout=4) as connection:
         connection.settimeout(4)
         connection.sendall(message)
