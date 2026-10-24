@@ -28,6 +28,21 @@ jobs:
       - name: Restore NuGet dependencies
         run: dotnet restore NullRatRose/NullRatRose.csproj
 
+      - name: Download BoneLib reference assembly
+        shell: bash
+        run: |
+          mkdir -p NullRatRose/refs /tmp/bonelib-ref
+          curl -fsSL --retry 3 "https://thunderstore.io/package/download/bonelib/BoneLib/3.2.2/" -o /tmp/bonelib.zip
+          unzip -q /tmp/bonelib.zip -d /tmp/bonelib-ref
+          BONELIB_DLL="$(find /tmp/bonelib-ref -type f -iname 'BoneLib.dll' -print -quit)"
+          if [ -z "$BONELIB_DLL" ]; then
+            echo "::error::BoneLib.dll was not found in the downloaded BoneLib package."
+            find /tmp/bonelib-ref -maxdepth 3 -type f
+            exit 1
+          fi
+          cp "$BONELIB_DLL" NullRatRose/refs/BoneLib.dll
+          echo "Prepared BoneLib compile reference: $BONELIB_DLL"
+
 
       - name: Inject private bridge secret for this build
         env:
