@@ -29,13 +29,14 @@ namespace NullRatRose
         private const int LikeBatchesPerFrame = 2;
 
         private bool _spawnOnRoses = true;
-        private bool _spawnOnLikes;
+        private bool _spawnOnLikes = true;
         private bool _spawnOnFollows;
         private bool _spawnOnShares;
         private bool _spawnOnJoins;
-        private int _likesPerBatch = 100;
+        private int _likesPerBatch = 1;
         private int _likeRemainder;
         private int _pendingLikeBatches;
+        private int _likeEventsSeen;
 
         private readonly ConcurrentQueue<BridgeEvent> _pendingEvents = new ConcurrentQueue<BridgeEvent>();
         private TcpListener _listener;
@@ -99,9 +100,9 @@ namespace NullRatRose
                         _pendingLikeBatches = 0;
                     }
                 });
-                _boneMenuPage.CreateInt("Likes per 5 Rats", Color.yellow, _likesPerBatch, 10, 10, 1000, value =>
+                _boneMenuPage.CreateInt("Likes per 5 Rats", Color.yellow, _likesPerBatch, 1, 1, 1000, value =>
                 {
-                    _likesPerBatch = Math.Max(10, value);
+                    _likesPerBatch = Math.Max(1, value);
                     _likeRemainder = Math.Min(_likeRemainder, _likesPerBatch - 1);
                 });
                 _boneMenuPage.CreateBool("Trigger: Follows", Color.green, _spawnOnFollows, value => _spawnOnFollows = value);
@@ -252,6 +253,9 @@ namespace NullRatRose
                     break;
 
                 case "LIKE":
+                    _likeEventsSeen++;
+                    if (_likeEventsSeen <= 5 || _likeEventsSeen % 50 == 0)
+                        MelonLogger.Msg("[Null Rat Rose] LIKE event received: quantity=" + bridgeEvent.Quantity + ", trigger=" + _spawnOnLikes + ", threshold=" + _likesPerBatch + ".");
                     if (_spawnOnLikes)
                     {
                         long total = (long)_likeRemainder + Mathf.Clamp(bridgeEvent.Quantity, 1, MaxBridgeQuantity);
@@ -259,6 +263,8 @@ namespace NullRatRose
                         _likeRemainder = (int)(total % _likesPerBatch);
                         int accepted = Math.Min(newlyEarnedBatches, MaxQueuedLikeBatches - _pendingLikeBatches);
                         _pendingLikeBatches += accepted;
+                        if (accepted > 0)
+                            MelonLogger.Msg("[Null Rat Rose] Likes reached threshold; queued " + accepted + " five-rat batch(es). Pending batches: " + _pendingLikeBatches + ".");
                         if (accepted < newlyEarnedBatches)
                             MelonLogger.Warning("[Null Rat Rose] Like spawn queue capped to protect Quest performance.");
                     }
