@@ -12,7 +12,7 @@ The TikTok bridge is intentionally separate because the headset does not need to
 
 ## Important compatibility note
 
-This is an initial Quest-targeted implementation. GitHub Actions can compile the managed DLL, but that does not prove that spawning or tinting works in every BONELAB/LemonLoader version. The mod resolves Marrow spawn types at runtime to avoid bundling proprietary game assemblies. If the initial Null Rat barcode or Marrow overload differs in your installed build, the MelonLoader log will report the failure; update `NullRatBarcode` in `NullRatRoseMod.cs` and rebuild.
+This is an initial Quest-targeted implementation. It uses BoneLib's `HelperMethods.SpawnCrate` and BoneLib's vanilla Null Rat barcode. GitHub Actions can compile the managed DLL, but that does not prove spawning or tinting works in every BONELAB/LemonLoader version. If a test button logs a spawn failure, share the relevant MelonLoader log so the runtime issue can be diagnosed.
 
 ## Build
 
@@ -27,9 +27,10 @@ The artifact contains the mod DLL and the PC-side TikTok bridge.
 
 1. Install and patch BONELAB with a compatible version of [LemonLoader](https://github.com/LemonLoader/MelonLoader). Back up your game data first.
 2. Extract `NullRatRose.dll` from the artifact.
-3. Put the DLL in the LemonLoader Mods folder for BONELAB. Depending on the loader version, this is commonly under `/sdcard/MelonLoader/<BONELAB package name>/Mods`; use the path shown by your LemonLoader setup.
-4. Install the required BoneLib version separately if your broader mod setup needs it. This mod does not bundle BoneLib or game assemblies.
-5. Launch BONELAB, load into an actual level, and keep the headset on the same Wi-Fi network as the PC.
+3. Install BoneLib v3.2.2 separately into the same BONELAB code-mod Mods folder. BoneLib is required for the menu and is not bundled into this ZIP.
+4. Put `NullRatRose.dll` in the same LemonLoader Mods folder. Depending on your loader version, use the path shown by your LemonLoader setup; common layouts include `/sdcard/MelonLoader/<BONELAB package name>/Mods` or the BONELAB `files/Mods` folder.
+5. Launch BONELAB, load into an actual level, and open BoneMenu from your in-game watch/menu controls.
+6. Open **Null Rat Rose** and test **TEST: Spawn 1 Null Rat** first. If that works, try **TEST: Spawn 5 Null Rats**. **TEST: Simulate Rose (5 Rats)** exercises the gift queue without requiring the Python listener.
 
 ## Configure the PC bridge
 
