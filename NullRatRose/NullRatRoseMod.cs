@@ -9,9 +9,11 @@ using System.Text;
 using System.Threading;
 using MelonLoader;
 using UnityEngine;
+using BoneLib.BoneMenu;
 
 [assembly: MelonInfo(typeof(NullRatRose.NullRatRoseMod), "Null Rat Rose", "0.1.0", "TagtusVR")]
 [assembly: MelonGame("Stress Level Zero", "BONELAB")]
+[assembly: MelonDependency("BoneLib")]
 
 namespace NullRatRose
 {
@@ -33,11 +35,13 @@ namespace NullRatRose
         private Type _crateReferenceType;
         private bool _spawnApiReady;
         private bool _spawnApiErrorLogged;
+        private Page _boneMenuPage;
 
         public override void OnInitializeMelon()
         {
             MelonLogger.Msg("[Null Rat Rose] Starting local gift bridge on TCP port " + BridgePort + ".");
-            MelonLogger.Warning("[Null Rat Rose] Change SharedSecret in NullRatRoseMod.cs and TikTokBridge/.env before streaming.");
+            MelonLogger.Msg("[Null Rat Rose] Creating BoneMenu test controls.");
+            SetupBoneMenu();
 
             try
             {
@@ -54,6 +58,42 @@ namespace NullRatRose
             catch (Exception ex)
             {
                 MelonLogger.Error("[Null Rat Rose] Could not start the local bridge: " + ex.Message);
+            }
+        }
+
+        private void SetupBoneMenu()
+        {
+            try
+            {
+                if (Page.Root == null)
+                {
+                    MelonLogger.Error("[Null Rat Rose] BoneMenu root is not ready. Confirm BoneLib is installed, then check the MelonLoader log.");
+                    return;
+                }
+
+                _boneMenuPage = Page.Root.CreatePage("Null Rat Rose", Color.magenta);
+                _boneMenuPage.CreateFunction("TEST: Spawn 1 Null Rat", Color.green, new Action(() =>
+                {
+                    MelonLogger.Msg("[Null Rat Rose] Manual single-rat test requested.");
+                    SpawnNullRat();
+                }));
+                _boneMenuPage.CreateFunction("TEST: Spawn 5 Null Rats", Color.cyan, new Action(() =>
+                {
+                    MelonLogger.Msg("[Null Rat Rose] Manual five-rat test requested.");
+                    for (int i = 0; i < 5; i++)
+                        SpawnNullRat();
+                }));
+                _boneMenuPage.CreateFunction("TEST: Simulate Rose (5 Rats)", Color.yellow, new Action(() =>
+                {
+                    MelonLogger.Msg("[Null Rat Rose] Simulated Rose gift queued.");
+                    _pendingRoseCounts.Enqueue(1);
+                }));
+
+                MelonLogger.Msg("[Null Rat Rose] BoneMenu page added with three test buttons.");
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error("[Null Rat Rose] Failed to create BoneMenu page. Confirm BoneLib v3.x is installed. " + ex);
             }
         }
 
@@ -244,6 +284,7 @@ namespace NullRatRose
                 }
 
                 spawn.Invoke(null, args);
+                MelonLogger.Msg("[Null Rat Rose] Spawn request submitted at " + position + ". If no rat appears, check the logged barcode/API error and BONELAB version.");
             }
             catch (Exception ex)
             {
