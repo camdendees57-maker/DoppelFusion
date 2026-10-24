@@ -24,14 +24,38 @@ namespace NullRatRose
         // Override here if your installed BONELAB build uses a different barcode.
         private const string NullRatBarcode = "c1534c5a-ef15-44c0-88ae-aebc4e756c6c";
         private const int MaxRoseQuantityPerMessage = 10;
+        private const int MaxBridgeQuantity = 10000;
+        private const int MaxQueuedLikeBatches = 50;
+        private const int LikeBatchesPerFrame = 2;
 
-        private readonly ConcurrentQueue<int> _pendingRoseCounts = new ConcurrentQueue<int>();
+        private bool _spawnOnRoses = true;
+        private bool _spawnOnLikes;
+        private bool _spawnOnFollows;
+        private bool _spawnOnShares;
+        private bool _spawnOnJoins;
+        private int _likesPerBatch = 100;
+        private int _likeRemainder;
+        private int _pendingLikeBatches;
+
+        private readonly ConcurrentQueue<BridgeEvent> _pendingEvents = new ConcurrentQueue<BridgeEvent>();
         private TcpListener _listener;
         private Thread _listenerThread;
         private volatile bool _stopping;
         private bool _spawnFailureLogged;
         private bool _boneMenuReady;
         private Page _boneMenuPage;
+
+        private sealed class BridgeEvent
+        {
+            public readonly string Type;
+            public readonly int Quantity;
+
+            public BridgeEvent(string type, int quantity)
+            {
+                Type = type;
+                Quantity = quantity;
+            }
+        }
 
         public override void OnInitializeMelon()
         {
@@ -65,6 +89,25 @@ namespace NullRatRose
                     return;
 
                 _boneMenuPage = Page.Root.CreatePage("Null Rat Rose", Color.magenta);
+                _boneMenuPage.CreateBool("Trigger: Rose Gifts", Color.magenta, _spawnOnRoses, value => _spawnOnRoses = value);
+                _boneMenuPage.CreateBool("Trigger: Likes", Color.yellow, _spawnOnLikes, value =>
+                {
+                    _spawnOnLikes = value;
+                    if (!value)
+                    {
+                        _likeRemainder = 0;
+                        _pendingLikeBatches = 0;
+                    }
+                });
+                _boneMenuPage.CreateInt("Likes per 5 Rats", Color.yellow, _likesPerBatch, 10, 10, 1000, value =>
+                {
+                    _likesPerBatch = Math.Max(10, value);
+                    _likeRemainder = Math.Min(_likeRemainder, _likesPerBatch - 1);
+                });
+                _boneMenuPage.CreateBool("Trigger: Follows", Color.green, _spawnOnFollows, value => _spawnOnFollows = value);
+                _boneMenuPage.CreateBool("Trigger: Shares", Color.cyan, _spawnOnShares, value => _spawnOnShares = value);
+                _boneMenuPage.CreateBool("Trigger: Viewer Joins", Color.white, _spawnOnJoins, value => _spawnOnJoins = value);
+
                 _boneMenuPage.CreateFunction("TEST: Spawn 1 Null Rat", Color.green, new Action(() =>
                 {
                     MelonLogger.Msg("[Null Rat Rose] Manual single-rat test requested.");
@@ -79,11 +122,28 @@ namespace NullRatRose
                 _boneMenuPage.CreateFunction("TEST: Simulate Rose (5 Rats)", Color.yellow, new Action(() =>
                 {
                     MelonLogger.Msg("[Null Rat Rose] Simulated Rose gift queued.");
-                    _pendingRoseCounts.Enqueue(1);
+                    _pendingEvents.Enqueue(new BridgeEvent("ROSE", 1));
+                }));
+                _boneMenuPage.CreateFunction("TEST: Simulate Like Burst", Color.yellow, new Action(() =>
+                {
+                    MelonLogger.Msg("[Null Rat Rose] Simulated " + _likesPerBatch + "-like burst queued.");
+                    _pendingEvents.Enqueue(new BridgeEvent("LIKE", _likesPerBatch));
+                }));
+                _boneMenuPage.CreateFunction("TEST: Simulate Follow", Color.green, new Action(() =>
+                {
+                    _pendingEvents.Enqueue(new BridgeEvent("FOLLOW", 1));
+                }));
+                _boneMenuPage.CreateFunction("TEST: Simulate Share", Color.cyan, new Action(() =>
+                {
+                    _pendingEvents.Enqueue(new BridgeEvent("SHARE", 1));
+                }));
+                _boneMenuPage.CreateFunction("TEST: Simulate Viewer Join", Color.white, new Action(() =>
+                {
+                    _pendingEvents.Enqueue(new BridgeEvent("JOIN", 1));
                 }));
 
                 _boneMenuReady = true;
-                MelonLogger.Msg("[Null Rat Rose] BoneMenu page added with three test buttons.");
+                MelonLogger.Msg("[Null Rat Rose] BoneMenu page added with event toggles and test buttons.");
             }
             catch (Exception ex)
             {
@@ -97,18 +157,16 @@ namespace NullRatRose
             if (!_boneMenuReady && Page.Root != null)
                 SetupBoneMenu();
 
-            // Unity/Marrow spawning must happen on the game thread, not the TCP worker thread.
-            if (_pendingRoseCounts.TryDequeue(out int roseCount))
+            // All Unity/Marrow spawning must happen on the game thread, not the TCP worker thread.
+            if (_pendingEvents.TryDequeue(out BridgeEvent bridgeEvent))
+                ProcessBridgeEvent(bridgeEvent);
+
+            // Drip likes-triggered batches across frames so a large like event cannot freeze Quest.
+            if (_spawnOnLikes && _pendingLikeBatches > 0)
             {
-                roseCount = Mathf.Clamp(roseCount, 1, MaxRoseQuantityPerMessage);
-                for (int rose = 0; rose < roseCount; rose++)
-                {
-                    for (int rat = 0; rat < 5; rat++)
-                    {
-                        SpawnNullRat();
-                    }
-                }
-                MelonLogger.Msg("[Null Rat Rose] Processed " + roseCount + " Rose gift(s): requested " + (roseCount * 5) + " Null Rats.");
+                int batches = Math.Min(_pendingLikeBatches, LikeBatchesPerFrame);
+                _pendingLikeBatches -= batches;
+                SpawnRatBatches(batches);
             }
         }
 
@@ -141,18 +199,20 @@ namespace NullRatRose
                         continue;
 
                     string[] parts = line.Trim().Split('|');
-                    if (parts.Length != 3 || !string.Equals(parts[0], "ROSE", StringComparison.Ordinal))
+                    if (parts.Length != 4 || !string.Equals(parts[0], "EVENT", StringComparison.Ordinal))
+                        continue;
+                    if (!IsSupportedEventType(parts[2]))
                         continue;
                     if (!SecretsMatch(parts[1], SharedSecret))
                     {
                         MelonLogger.Warning("[Null Rat Rose] Rejected bridge message: secret did not match.");
                         continue;
                     }
-                    if (!int.TryParse(parts[2], out int quantity))
+                    if (!int.TryParse(parts[3], out int quantity))
                         continue;
 
-                    quantity = Mathf.Clamp(quantity, 1, MaxRoseQuantityPerMessage);
-                    _pendingRoseCounts.Enqueue(quantity);
+                    quantity = Mathf.Clamp(quantity, 1, MaxBridgeQuantity);
+                    _pendingEvents.Enqueue(new BridgeEvent(parts[2], quantity));
                     byte[] response = Encoding.UTF8.GetBytes("OK\n");
                     stream.Write(response, 0, response.Length);
                 }
@@ -170,6 +230,67 @@ namespace NullRatRose
                         MelonLogger.Warning("[Null Rat Rose] Bridge connection problem: " + ex.Message);
                 }
             }
+        }
+
+        private static bool IsSupportedEventType(string eventType)
+        {
+            return eventType == "ROSE" || eventType == "LIKE" ||
+                   eventType == "FOLLOW" || eventType == "SHARE" ||
+                   eventType == "JOIN";
+        }
+
+        private void ProcessBridgeEvent(BridgeEvent bridgeEvent)
+        {
+            if (bridgeEvent == null)
+                return;
+
+            switch (bridgeEvent.Type)
+            {
+                case "ROSE":
+                    if (_spawnOnRoses)
+                        SpawnRatBatches(Mathf.Clamp(bridgeEvent.Quantity, 1, MaxRoseQuantityPerMessage));
+                    break;
+
+                case "LIKE":
+                    if (_spawnOnLikes)
+                    {
+                        long total = (long)_likeRemainder + Mathf.Clamp(bridgeEvent.Quantity, 1, MaxBridgeQuantity);
+                        int newlyEarnedBatches = (int)(total / _likesPerBatch);
+                        _likeRemainder = (int)(total % _likesPerBatch);
+                        int accepted = Math.Min(newlyEarnedBatches, MaxQueuedLikeBatches - _pendingLikeBatches);
+                        _pendingLikeBatches += accepted;
+                        if (accepted < newlyEarnedBatches)
+                            MelonLogger.Warning("[Null Rat Rose] Like spawn queue capped to protect Quest performance.");
+                    }
+                    break;
+
+                case "FOLLOW":
+                    if (_spawnOnFollows)
+                        SpawnRatBatches(1);
+                    break;
+
+                case "SHARE":
+                    if (_spawnOnShares)
+                        SpawnRatBatches(1);
+                    break;
+
+                case "JOIN":
+                    if (_spawnOnJoins)
+                        SpawnRatBatches(1);
+                    break;
+            }
+        }
+
+        private void SpawnRatBatches(int batchCount)
+        {
+            batchCount = Mathf.Clamp(batchCount, 0, MaxQueuedLikeBatches);
+            for (int batch = 0; batch < batchCount; batch++)
+            {
+                for (int rat = 0; rat < 5; rat++)
+                    SpawnNullRat();
+            }
+            if (batchCount > 0)
+                MelonLogger.Msg("[Null Rat Rose] Requested " + (batchCount * 5) + " Null Rats across " + batchCount + " event batch(es).");
         }
 
         private static bool SecretsMatch(string supplied, string expected)
