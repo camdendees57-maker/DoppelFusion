@@ -67,6 +67,9 @@ jobs:
           print("Private bridge secret injected into build workspace (value not logged).")
           PY
 
+      - name: Validate TikTok bridge Python syntax
+        run: python3 -m py_compile NullRatRose/TikTokBridge/tiktok_listener.py
+
       - name: Build mod DLL
         run: dotnet build NullRatRose/NullRatRose.csproj --configuration Release --no-restore --output "$GITHUB_WORKSPACE/build-output/Mods"
 
