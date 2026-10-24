@@ -1,0 +1,53 @@
+name: Build Null Rat Rose for Quest
+
+on:
+  push:
+    branches:
+      - rose-nullrats
+    paths:
+      - "NullRatRose/**"
+      - ".github/workflows/build-null-rat-rose.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile and package Quest mod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 6
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Restore NuGet dependencies
+        run: dotnet restore NullRatRose/NullRatRose.csproj
+
+      - name: Build mod DLL
+        run: dotnet build NullRatRose/NullRatRose.csproj --configuration Release --no-restore --output "$GITHUB_WORKSPACE/build-output/Mods"
+
+      - name: Assemble distribution ZIP
+        shell: bash
+        run: |
+          mkdir -p package/Mods package/TikTokBridge
+          cp build-output/Mods/NullRatRose.dll package/Mods/
+          cp NullRatRose/TikTokBridge/requirements.txt package/TikTokBridge/
+          cp NullRatRose/TikTokBridge/.env.example package/TikTokBridge/
+          cp NullRatRose/TikTokBridge/tiktok_listener.py package/TikTokBridge/
+          cp NullRatRose/TikTokBridge/start_windows.bat package/TikTokBridge/
+          cp NullRatRose/README.md package/README.md
+          cd package
+          zip -qr ../NullRatRose-Quest.zip .
+
+      - name: Upload downloadable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NullRatRose-Quest
+          path: NullRatRose-Quest.zip
+          if-no-files-found: error
+          retention-days: 14
