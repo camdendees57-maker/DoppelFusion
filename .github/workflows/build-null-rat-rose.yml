@@ -28,6 +28,31 @@ jobs:
       - name: Restore NuGet dependencies
         run: dotnet restore NullRatRose/NullRatRose.csproj
 
+
+      - name: Inject private bridge secret for this build
+        env:
+          ROSE_BRIDGE_SECRET: ${{ secrets.ROSE_BRIDGE_SECRET }}
+        shell: bash
+        run: |
+          if [ -z "$ROSE_BRIDGE_SECRET" ]; then
+            echo "::error::Add ROSE_BRIDGE_SECRET under Settings > Secrets and variables > Actions before building."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          path = Path("NullRatRose/NullRatRoseMod.cs")
+          source = path.read_text(encoding="utf-8")
+          marker = 'private const string SharedSecret = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET";'
+          if marker not in source:
+              raise SystemExit("Secret placeholder not found; refusing to build with an unknown secret state.")
+          secret = os.environ["ROSE_BRIDGE_SECRET"]
+          source = source.replace(marker, "private const string SharedSecret = " + json.dumps(secret) + ";", 1)
+          path.write_text(source, encoding="utf-8")
+          print("Private bridge secret injected into build workspace (value not logged).")
+          PY
+
       - name: Build mod DLL
         run: dotnet build NullRatRose/NullRatRose.csproj --configuration Release --no-restore --output "$GITHUB_WORKSPACE/build-output/Mods"
 
