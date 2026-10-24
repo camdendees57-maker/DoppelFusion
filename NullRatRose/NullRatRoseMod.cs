@@ -13,7 +13,6 @@ using BoneLib.BoneMenu;
 
 [assembly: MelonInfo(typeof(NullRatRose.NullRatRoseMod), "Null Rat Rose", "0.1.0", "TagtusVR")]
 [assembly: MelonGame("Stress Level Zero", "BONELAB")]
-[assembly: MelonDependency("BoneLib")]
 
 namespace NullRatRose
 {
