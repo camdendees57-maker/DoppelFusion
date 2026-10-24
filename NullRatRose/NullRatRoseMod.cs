@@ -349,14 +349,14 @@ namespace NullRatRose
             Color tint = Color.HSVToRGB(UnityEngine.Random.value, 0.85f, 1f);
             try
             {
-                Renderer[] renderers = spawnedObject.GetComponentsInChildren<Renderer>(true);
+                var renderers = spawnedObject.GetComponentsInChildren<Renderer>(true);
                 foreach (Renderer renderer in renderers)
                 {
                     if (renderer == null)
                         continue;
                     try
                     {
-                        Material[] materials = renderer.materials;
+                        var materials = renderer.materials;
                         foreach (Material material in materials)
                         {
                             if (material != null)
