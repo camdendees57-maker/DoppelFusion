@@ -5,7 +5,7 @@ A BONELAB code mod for standalone Meta Quest. TikTok LIVE events can trigger bat
 ## Architecture
 
 - **Quest:** LemonLoader loads `NullRatRose.dll`. The mod listens on TCP port `28991` for authenticated messages and performs all Marrow spawning on BONELAB's main thread.
-- **PC:** `TikTokBridge/tiktok_listener.py` listens to a TikTok LIVE stream and sends Rose events to the Quest over the same local Wi-Fi network.
+- **PC:** `TikTokBridge/tiktok_listener.py` listens to TikTok LIVE gift, like, follow, share, and viewer-join events and sends them to the Quest over the same local Wi-Fi network.
 - **Build:** GitHub Actions compiles the DLL and packages the mod plus the bridge into an artifact ZIP.
 
 The TikTok bridge is intentionally separate because the headset does not need to run a Python process. Your PC must remain on and connected to the same network during the stream.
