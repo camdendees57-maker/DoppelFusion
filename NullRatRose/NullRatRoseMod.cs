@@ -31,6 +31,7 @@ namespace NullRatRose
         private Thread _listenerThread;
         private volatile bool _stopping;
         private bool _spawnFailureLogged;
+        private bool _boneMenuReady;
         private Page _boneMenuPage;
 
         public override void OnInitializeMelon()
@@ -62,10 +63,7 @@ namespace NullRatRose
             try
             {
                 if (Page.Root == null)
-                {
-                    MelonLogger.Error("[Null Rat Rose] BoneMenu root is not ready. Confirm BoneLib is installed, then check the MelonLoader log.");
                     return;
-                }
 
                 _boneMenuPage = Page.Root.CreatePage("Null Rat Rose", Color.magenta);
                 _boneMenuPage.CreateFunction("TEST: Spawn 1 Null Rat", Color.green, new Action(() =>
@@ -85,6 +83,7 @@ namespace NullRatRose
                     _pendingRoseCounts.Enqueue(1);
                 }));
 
+                _boneMenuReady = true;
                 MelonLogger.Msg("[Null Rat Rose] BoneMenu page added with three test buttons.");
             }
             catch (Exception ex)
@@ -95,6 +94,10 @@ namespace NullRatRose
 
         public override void OnUpdate()
         {
+            // BoneLib's menu root may be initialized after this mod, so retry until the menu exists.
+            if (!_boneMenuReady && Page.Root != null)
+                SetupBoneMenu();
+
             // Unity/Marrow spawning must happen on the game thread, not the TCP worker thread.
             if (_pendingRoseCounts.TryDequeue(out int roseCount))
             {
