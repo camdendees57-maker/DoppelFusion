@@ -1,4 +1,5 @@
 import asyncio
+import getpass
 import os
 import socket
 import sys
@@ -11,16 +12,18 @@ load_dotenv()
 
 USERNAME = os.getenv("TIKTOK_USERNAME", "").strip()
 QUEST_IP = os.getenv("QUEST_IP", "").strip()
-SECRET = os.getenv("ROSE_BRIDGE_SECRET", "")
 PORT = int(os.getenv("BRIDGE_PORT", "28991"))
 MAX_ROSES_PER_EVENT = 10
 
-if not USERNAME or USERNAME == "@your_username":
+if not USERNAME:
     raise SystemExit("Set TIKTOK_USERNAME in your .env file.")
-if not QUEST_IP or QUEST_IP == "192.168.1.100":
+if not QUEST_IP:
     raise SystemExit("Set QUEST_IP in your .env file.")
-if not SECRET or SECRET == "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET":
-    raise SystemExit("Set a private ROSE_BRIDGE_SECRET in .env and the matching value in NullRatRoseMod.cs.")
+
+# Read the shared secret without echoing it or saving it in the .env file.
+SECRET = getpass.getpass("Enter the ROSE_BRIDGE_SECRET saved in GitHub Actions: ").strip()
+if not SECRET:
+    raise SystemExit("A bridge secret is required.")
 
 client = TikTokLiveClient(unique_id=USERNAME)
 
