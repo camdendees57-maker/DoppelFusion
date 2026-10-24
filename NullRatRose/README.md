@@ -36,8 +36,10 @@ The artifact contains the mod DLL and the PC-side TikTok bridge.
 1. Extract the artifact's `TikTokBridge` folder on the PC.
 2. Copy `.env.example` to `.env`.
 3. Set `TIKTOK_USERNAME` to your public LIVE username and `QUEST_IP` to the Quest's local Wi-Fi IP address.
-4. Create a long random secret. Set it as `ROSE_BRIDGE_SECRET` in `.env`, then set the exact same text as `SharedSecret` in `NullRatRoseMod.cs`.
-5. Rebuild and reinstall the DLL after changing the C# secret. Never publish your real secret.
+4. Generate a long random secret on your PC with `py -c "import secrets; print(secrets.token_urlsafe(32))"`.
+5. In GitHub, open **Settings → Secrets and variables → Actions → New repository secret**. Name it `ROSE_BRIDGE_SECRET` and paste the generated value. The workflow injects it only into the build workspace; the value is not committed to the public source.
+6. Set the same generated value as `ROSE_BRIDGE_SECRET` in your local `.env` file on the PC. Do not put the actual secret into a source file or commit the `.env` file.
+7. Run the GitHub Actions workflow again and install the freshly built DLL from that run.
 6. Run `start_windows.bat`. Keep the terminal open during the stream.
 
 The Quest must be reachable from the PC on TCP port `28991`. If the PC cannot connect, check that both devices are on the same Wi-Fi network and that router/client isolation or firewall rules are not blocking LAN traffic. Do not expose this port to the public internet.
