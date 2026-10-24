@@ -20,14 +20,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up .NET 6
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "6.0.x"
-
-      - name: Restore NuGet dependencies
-        run: dotnet restore NullRatRose/NullRatRose.csproj
-
       - name: Download BoneLib reference assembly
         shell: bash
         run: |
@@ -43,6 +35,13 @@ jobs:
           cp "$BONELIB_DLL" NullRatRose/refs/BoneLib.dll
           echo "Prepared BoneLib compile reference: $BONELIB_DLL"
 
+      - name: Set up .NET 6
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Restore NuGet dependencies
+        run: dotnet restore NullRatRose/NullRatRose.csproj
 
       - name: Inject private bridge secret for this build
         env:
